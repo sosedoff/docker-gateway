@@ -1,0 +1,73 @@
+package main
+
+import (
+	"log"
+
+	docker "github.com/fsouza/go-dockerclient"
+)
+
+type Listener struct {
+	client   *docker.Client
+	chEvents chan *docker.APIEvents
+	gw       *Gateway
+}
+
+func NewListener(client *docker.Client, gw *Gateway) *Listener {
+	return &Listener{
+		client,
+		make(chan *docker.APIEvents),
+		gw,
+	}
+}
+
+func (l *Listener) Init() {
+	containers, err := l.client.ListContainers(docker.ListContainersOptions{})
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	for _, c := range containers {
+		container, err := l.client.InspectContainer(c.ID)
+		if err == nil {
+			l.gw.Add(container)
+		}
+	}
+}
+
+func (l *Listener) Start() error {
+	err := l.client.AddEventListener(l.chEvents)
+	if err != nil {
+		return err
+	}
+
+	for {
+		event := <-l.chEvents
+		if event == nil {
+			continue
+		}
+
+		l.handleEvent(event)
+	}
+
+	return nil
+}
+
+func (l *Listener) handleEvent(event *docker.APIEvents) {
+	if event == nil {
+		return
+	}
+
+	switch event.Status {
+	case "start":
+		l.gw.Remove(event.ID)
+		container, err := l.client.InspectContainer(event.ID)
+		if err == nil {
+			l.gw.Add(container)
+		} else {
+			log.Println(err)
+		}
+	case "stop", "destroy":
+		l.gw.Remove(event.ID)
+	}
+}
