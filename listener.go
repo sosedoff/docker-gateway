@@ -60,14 +60,19 @@ func (l *Listener) handleEvent(event *docker.APIEvents) {
 
 	switch event.Status {
 	case "start":
-		l.gw.Remove(event.ID)
 		container, err := l.client.InspectContainer(event.ID)
 		if err == nil {
+			l.gw.Remove(container)
 			l.gw.Add(container)
 		} else {
 			log.Println(err)
 		}
-	case "stop", "destroy":
-		l.gw.Remove(event.ID)
+	case "stop", "destroy", "kill", "die":
+		container, err := l.client.InspectContainer(event.ID)
+		if err == nil {
+			l.gw.Remove(container)
+		} else {
+			log.Println(err)
+		}
 	}
 }

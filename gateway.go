@@ -6,8 +6,6 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 	"strings"
 	"sync"
 
@@ -15,59 +13,34 @@ import (
 )
 
 type Gateway struct {
-	Destinations map[string]DestinationList
+	Destinations map[string]DestinationMap
 	*sync.Mutex
-}
-
-type DestinationList []*Destination
-
-type Destination struct {
-	cid       string
-	targetUrl *url.URL
-	proxy     *httputil.ReverseProxy
 }
 
 func NewGateway() *Gateway {
 	return &Gateway{
-		map[string]DestinationList{},
+		map[string]DestinationMap{},
 		&sync.Mutex{},
 	}
 }
 
-func NewDestination(container *docker.Container) (*Destination, error) {
-	ip := container.NetworkSettings.IPAddress
-	port := "5000" // default foreman port
-
-	for k, _ := range container.Config.ExposedPorts {
-		port = k.Port()
-		break
+func (gw *Gateway) fetchDomain(c *docker.Container) string {
+	for _, v := range c.Config.Env {
+		if strings.Contains(v, "APP_DOMAIN=") {
+			return strings.Replace(v, "APP_DOMAIN=", "", 1)
+		}
 	}
 
-	targetUrl, err := url.Parse(fmt.Sprintf("http://%v:%v", ip, port))
-	if err != nil {
-		return nil, err
-	}
-
-	dest := &Destination{
-		container.ID,
-		targetUrl,
-		httputil.NewSingleHostReverseProxy(targetUrl),
-	}
-
-	return dest, nil
-}
-
-func (d *Destination) String() string {
-	return d.targetUrl.String()
+	return c.ID
 }
 
 func (gw *Gateway) Add(container *docker.Container) error {
 	log.Println("Adding container:", container.ID)
 
-	for _, dst := range gw.Destinations[container.ID] {
-		if dst.cid == container.ID {
-			return fmt.Errorf("Destination alreaady exists:", dst.String())
-		}
+	key := gw.fetchDomain(container)
+
+	if gw.Destinations[key][container.ID] != nil {
+		return fmt.Errorf("Destination alreaady exists!")
 	}
 
 	if len(container.Config.ExposedPorts) == 0 {
@@ -83,48 +56,44 @@ func (gw *Gateway) Add(container *docker.Container) error {
 	gw.Lock()
 	defer gw.Unlock()
 
-	gw.Destinations[container.ID] = append(gw.Destinations[container.ID], dest)
+	if gw.Destinations[key] == nil {
+		gw.Destinations[key] = DestinationMap{}
+	}
+
+	gw.Destinations[key][container.ID] = dest
 	return nil
 }
 
-func (gw *Gateway) Remove(containerId string) error {
-	log.Println("Removing container:", containerId)
+func (gw *Gateway) Remove(container *docker.Container) error {
+	log.Println("Removing container:", container.ID)
+	key := gw.fetchDomain(container)
 
-	if gw.Destinations[containerId] == nil {
+	if len(gw.Destinations[key]) == 0 {
 		return nil
 	}
 
 	gw.Lock()
 	defer gw.Unlock()
 
-	delete(gw.Destinations, containerId)
+	delete(gw.Destinations[key], container.ID)
 	return nil
 }
 
-func (gw *Gateway) randomDestination(list DestinationList) *Destination {
-	if len(list) == 0 {
+func (gw *Gateway) Find(host string) *Destination {
+	if len(gw.Destinations[host]) == 0 {
 		return nil
+	}
+
+	list := []*Destination{}
+	for _, dst := range gw.Destinations[host] {
+		list = append(list, dst)
 	}
 
 	return list[rand.Intn(len(list))]
 }
 
-func (gw *Gateway) Find(containerId string) *Destination {
-	// Lookup destination by short container ID
-	if len(containerId) == 12 {
-		for k, _ := range gw.Destinations {
-			if k[0:12] == containerId {
-				return gw.randomDestination(gw.Destinations[k])
-			}
-		}
-	}
-
-	return gw.randomDestination(gw.Destinations[containerId])
-}
-
 func (gw *Gateway) Handle(w http.ResponseWriter, r *http.Request) {
-	containerId := strings.Split(r.Host, ".")[0]
-	destination := gw.Find(containerId)
+	destination := gw.Find(r.Host)
 
 	log.Printf("Request method=%s host=%s path=%s -> %s\n", r.Method, r.Host, r.RequestURI, destination)
 
@@ -139,8 +108,8 @@ func (gw *Gateway) Handle(w http.ResponseWriter, r *http.Request) {
 func (gw *Gateway) RenderDestinations(w http.ResponseWriter, r *http.Request) {
 	result := map[string][]string{}
 
-	for k, list := range gw.Destinations {
-		for _, dst := range list {
+	for k, dstMap := range gw.Destinations {
+		for _, dst := range dstMap {
 			result[k] = append(result[k], dst.String())
 		}
 	}
