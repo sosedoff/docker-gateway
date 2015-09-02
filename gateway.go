@@ -15,15 +15,17 @@ import (
 
 type Gateway struct {
 	DefaultDomain string
+	SkipNoDomain  bool
 	Destinations  map[string]DestinationMap
 	*sync.Mutex
 }
 
 func NewGateway() *Gateway {
 	return &Gateway{
-		os.Getenv("GW_DOMAIN"),
-		map[string]DestinationMap{},
-		&sync.Mutex{},
+		DefaultDomain: os.Getenv("GW_DOMAIN"),
+		SkipNoDomain:  os.Getenv("GW_SKIP_NO_DOMAIN") != "",
+		Destinations:  map[string]DestinationMap{},
+		Mutex:         &sync.Mutex{},
 	}
 }
 
@@ -34,6 +36,10 @@ func (gw *Gateway) fetchDomain(c *docker.Container) string {
 		}
 	}
 
+	if gw.SkipNoDomain {
+		return ""
+	}
+
 	return fmt.Sprintf("%s.%s", c.ID[0:12], gw.DefaultDomain)
 }
 
@@ -41,6 +47,11 @@ func (gw *Gateway) Add(container *docker.Container) error {
 	log.Println("Adding container:", container.ID)
 
 	key := gw.fetchDomain(container)
+
+	if key == "" {
+		log.Println("Skipped adding container", container.ID)
+		return nil
+	}
 
 	if gw.Destinations[key][container.ID] != nil {
 		return fmt.Errorf("Destination alreaady exists!")
