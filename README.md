@@ -2,7 +2,7 @@
 
 Stupid simple reverse proxy for Docker
 
-## Using with nginx
+### Using with nginx
 
 ```
 http {
