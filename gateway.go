@@ -26,8 +26,8 @@ func NewGateway() *Gateway {
 
 func (gw *Gateway) fetchDomain(c *docker.Container) string {
 	for _, v := range c.Config.Env {
-		if strings.Contains(v, "APP_DOMAIN=") {
-			return strings.Replace(v, "APP_DOMAIN=", "", 1)
+		if strings.Contains(v, "DOMAIN=") {
+			return strings.Replace(v, "DOMAIN=", "", 1)
 		}
 	}
 
