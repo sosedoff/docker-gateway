@@ -27,6 +27,9 @@ func main() {
 	}
 
 	gateway := NewGateway()
+	if gateway.DefaultDomain == "" {
+		log.Fatalln("Please provide GW_DOMAIN environment variable!")
+	}
 
 	listener := NewListener(client, gateway)
 	listener.Init()

@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 
@@ -13,12 +14,14 @@ import (
 )
 
 type Gateway struct {
-	Destinations map[string]DestinationMap
+	DefaultDomain string
+	Destinations  map[string]DestinationMap
 	*sync.Mutex
 }
 
 func NewGateway() *Gateway {
 	return &Gateway{
+		os.Getenv("GW_DOMAIN"),
 		map[string]DestinationMap{},
 		&sync.Mutex{},
 	}
@@ -31,7 +34,7 @@ func (gw *Gateway) fetchDomain(c *docker.Container) string {
 		}
 	}
 
-	return c.ID
+	return fmt.Sprintf("%s.%s", c.ID[0:12], gw.DefaultDomain)
 }
 
 func (gw *Gateway) Add(container *docker.Container) error {
