@@ -157,7 +157,7 @@ func (gw *Gateway) RenderLogs(w http.ResponseWriter, r *http.Request) {
 		Stderr:       true,
 		OutputStream: buff,
 		ErrorStream:  buff,
-		RawTerminal:  false,
+		RawTerminal:  true,
 		Tail:         lines,
 	})
 
