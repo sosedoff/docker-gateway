@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http/httputil"
 	"net/url"
+	"os"
 
 	docker "github.com/fsouza/go-dockerclient"
 )
@@ -15,9 +16,19 @@ type Destination struct {
 	proxy     *httputil.ReverseProxy
 }
 
+func getDefaultPort() string {
+	port := os.Getenv("DEFAULT_PORT")
+	if port == "" {
+		// This is a default foreman port
+		port = "5000"
+	}
+
+	return port
+}
+
 func NewDestination(container *docker.Container) (*Destination, error) {
 	ip := container.NetworkSettings.IPAddress
-	port := "5000" // default foreman port
+	port := getDefaultPort()
 
 	for k, _ := range container.Config.ExposedPorts {
 		port = k.Port()
