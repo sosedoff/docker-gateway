@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -14,14 +15,16 @@ import (
 )
 
 type Gateway struct {
+	Client        *docker.Client
 	DefaultDomain string
 	SkipNoDomain  bool
 	Destinations  map[string]DestinationMap
 	*sync.Mutex
 }
 
-func NewGateway() *Gateway {
+func NewGateway(client *docker.Client) *Gateway {
 	return &Gateway{
+		Client:        client,
 		DefaultDomain: os.Getenv("GW_DOMAIN"),
 		SkipNoDomain:  os.Getenv("GW_SKIP_NO_DOMAIN") != "",
 		Destinations:  map[string]DestinationMap{},
@@ -132,10 +135,48 @@ func (gw *Gateway) RenderDestinations(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "%s", data)
 }
 
+func (gw *Gateway) RenderLogs(w http.ResponseWriter, r *http.Request) {
+	dest := gw.Find(r.Host)
+
+	if dest == nil {
+		fmt.Fprintln(w, "Cant find any routes for this host")
+		return
+	}
+
+	// Determine how many lines of logs we need to fetch
+	lines := r.URL.Query().Get("lines")
+	if lines == "" {
+		lines = "3000"
+	}
+
+	buff := bytes.NewBuffer([]byte{})
+
+	err := gw.Client.Logs(docker.LogsOptions{
+		Container:    dest.containerId,
+		Stdout:       true,
+		Stderr:       true,
+		OutputStream: buff,
+		ErrorStream:  buff,
+		RawTerminal:  false,
+		Tail:         lines,
+	})
+
+	if err != nil {
+		fmt.Fprintln(w, "Error while fetching logs:", err)
+		return
+	}
+
+	r.Header.Set("Content-Type", "text/plain")
+	fmt.Fprintf(w, "%s", buff.String())
+}
+
 func (gw *Gateway) Start(bind string) error {
 	log.Printf("Starting gateway server on http://%s\n", bind)
 
+	http.HandleFunc("/_routes", gw.RenderDestinations)
 	http.HandleFunc("/_destinations", gw.RenderDestinations)
+	http.HandleFunc("/_logs", gw.RenderLogs)
+
 	http.HandleFunc("/", gw.Handle)
 	return http.ListenAndServe(bind, nil)
 }

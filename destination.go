@@ -12,8 +12,9 @@ import (
 type DestinationMap map[string]*Destination
 
 type Destination struct {
-	targetUrl *url.URL
-	proxy     *httputil.ReverseProxy
+	containerId string
+	targetUrl   *url.URL
+	proxy       *httputil.ReverseProxy
 }
 
 func getDefaultPort() string {
@@ -41,6 +42,7 @@ func NewDestination(container *docker.Container) (*Destination, error) {
 	}
 
 	dest := &Destination{
+		container.ID,
 		targetUrl,
 		httputil.NewSingleHostReverseProxy(targetUrl),
 	}

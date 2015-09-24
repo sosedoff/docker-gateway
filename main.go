@@ -26,7 +26,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	gateway := NewGateway()
+	gateway := NewGateway(client)
 	if gateway.DefaultDomain == "" {
 		log.Fatalln("Please provide GW_DOMAIN environment variable!")
 	}
