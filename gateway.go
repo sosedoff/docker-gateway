@@ -115,7 +115,7 @@ func (gw *Gateway) Handle(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Request method=%s host=%s path=%s -> %s\n", r.Method, r.Host, r.RequestURI, destination)
 
 	if destination == nil {
-		http.Error(w, "No route", http.StatusBadGateway)
+		http.Error(w, "Cant find any routes for this host", http.StatusBadGateway)
 		return
 	}
 
