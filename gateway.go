@@ -34,8 +34,10 @@ func NewGateway(client *docker.Client) *Gateway {
 
 func (gw *Gateway) fetchDomain(c *docker.Container) string {
 	for _, v := range c.Config.Env {
-		if strings.Contains(v, "DOMAIN=") {
-			return strings.Replace(v, "DOMAIN=", "", 1)
+		chunks := strings.Split(v, "=")
+
+		if chunks[0] == "DOMAIN" && len(chunks) > 1 {
+			return chunks[1]
 		}
 	}
 
