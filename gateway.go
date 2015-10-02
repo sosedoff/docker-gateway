@@ -169,15 +169,21 @@ func (gw *Gateway) RenderLogs(w http.ResponseWriter, r *http.Request) {
 		lines = "3000"
 	}
 
+	container, err := gw.Client.InspectContainer(dest.containerId)
+	if err != nil {
+		http.Error(w, "Unable to inspect container:"+dest.containerId, http.StatusBadRequest)
+		return
+	}
+
 	buff := bytes.NewBuffer([]byte{})
 
-	err := gw.Client.Logs(docker.LogsOptions{
+	err = gw.Client.Logs(docker.LogsOptions{
 		Container:    dest.containerId,
 		Stdout:       true,
 		Stderr:       true,
 		OutputStream: buff,
 		ErrorStream:  buff,
-		RawTerminal:  true,
+		RawTerminal:  container.Config.Tty,
 		Tail:         lines,
 	})
 
