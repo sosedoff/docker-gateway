@@ -48,6 +48,22 @@ func (gw *Gateway) fetchDomain(c *docker.Container) string {
 	return fmt.Sprintf("%s.%s", c.ID[0:12], gw.DefaultDomain)
 }
 
+func (gw *Gateway) notFound(w http.ResponseWriter, r *http.Request) {
+	routes := []string{}
+
+	for host, _ := range gw.Destinations {
+		routes = append(routes, fmt.Sprintf("- http://%s", host))
+	}
+
+	msg := []string{
+		"Cant find any routes for this host!\n",
+		"Check available URLs:",
+		strings.Join(routes, "\n"),
+	}
+
+	http.Error(w, strings.Join(msg, "\n"), http.StatusBadGateway)
+}
+
 func (gw *Gateway) Add(container *docker.Container) error {
 	log.Println("Adding container:", container.ID)
 
@@ -119,7 +135,7 @@ func (gw *Gateway) Handle(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Request method=%s host=%s path=%s -> %s\n", r.Method, r.Host, r.RequestURI, destination)
 
 	if destination == nil {
-		http.Error(w, "Cant find any routes for this host", http.StatusBadGateway)
+		gw.notFound(w, r)
 		return
 	}
 
@@ -143,7 +159,7 @@ func (gw *Gateway) RenderLogs(w http.ResponseWriter, r *http.Request) {
 	dest := gw.Find(r.Host)
 
 	if dest == nil {
-		fmt.Fprintln(w, "Cant find any routes for this host")
+		gw.notFound(w, r)
 		return
 	}
 
@@ -178,7 +194,7 @@ func (gw *Gateway) RenderEnvironment(w http.ResponseWriter, r *http.Request) {
 	dest := gw.Find(r.Host)
 
 	if dest == nil {
-		fmt.Fprintln(w, "Cant find any routes for this host")
+		gw.notFound(w, r)
 		return
 	}
 
