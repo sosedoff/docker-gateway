@@ -138,7 +138,8 @@ func (gw *Gateway) RenderDestinations(w http.ResponseWriter, r *http.Request) {
 }
 
 func (gw *Gateway) RenderLogs(w http.ResponseWriter, r *http.Request) {
-	dest := gw.Find(r.Host)
+	host := strings.Split(r.Host, ":")[0]
+	dest := gw.Find(host)
 
 	if dest == nil {
 		fmt.Fprintln(w, "Cant find any routes for this host")
