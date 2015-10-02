@@ -138,7 +138,7 @@ func (gw *Gateway) RenderDestinations(w http.ResponseWriter, r *http.Request) {
 }
 
 func (gw *Gateway) RenderLogs(w http.ResponseWriter, r *http.Request) {
-	host := strings.Split(r.Host, ":")[0]
+	host := strings.ToLower(strings.Split(r.Host, ":")[0])
 	dest := gw.Find(host)
 
 	if dest == nil {
