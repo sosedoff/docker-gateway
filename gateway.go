@@ -98,7 +98,9 @@ func (gw *Gateway) Remove(container *docker.Container) error {
 	return nil
 }
 
-func (gw *Gateway) Find(host string) *Destination {
+func (gw *Gateway) Find(reqHost string) *Destination {
+	host := strings.ToLower(strings.Split(reqHost, ":")[0])
+
 	if len(gw.Destinations[host]) == 0 {
 		return nil
 	}
@@ -138,8 +140,7 @@ func (gw *Gateway) RenderDestinations(w http.ResponseWriter, r *http.Request) {
 }
 
 func (gw *Gateway) RenderLogs(w http.ResponseWriter, r *http.Request) {
-	host := strings.ToLower(strings.Split(r.Host, ":")[0])
-	dest := gw.Find(host)
+	dest := gw.Find(r.Host)
 
 	if dest == nil {
 		fmt.Fprintln(w, "Cant find any routes for this host")
@@ -173,12 +174,32 @@ func (gw *Gateway) RenderLogs(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "%s", buff.String())
 }
 
+func (gw *Gateway) RenderEnvironment(w http.ResponseWriter, r *http.Request) {
+	dest := gw.Find(r.Host)
+
+	if dest == nil {
+		fmt.Fprintln(w, "Cant find any routes for this host")
+		return
+	}
+
+	container, err := gw.Client.InspectContainer(dest.containerId)
+	if err != nil {
+		fmt.Fprintln(w, "Error while inspecting container:", err)
+		return
+	}
+
+	env := strings.Join(container.Config.Env, "\n")
+	r.Header.Set("Content-Type", "text/plain")
+	fmt.Fprintf(w, "%s", env)
+}
+
 func (gw *Gateway) Start(bind string) error {
 	log.Printf("Starting gateway server on http://%s\n", bind)
 
 	http.HandleFunc("/_routes", gw.RenderDestinations)
 	http.HandleFunc("/_destinations", gw.RenderDestinations)
 	http.HandleFunc("/_logs", gw.RenderLogs)
+	http.HandleFunc("/_env", gw.RenderEnvironment)
 
 	http.HandleFunc("/", gw.Handle)
 	return http.ListenAndServe(bind, nil)
