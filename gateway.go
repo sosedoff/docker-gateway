@@ -252,9 +252,30 @@ func (gw *Gateway) RenderReset(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/_routes", 301)
 }
 
+func (gw *Gateway) RenderHelp(w http.ResponseWriter, r *http.Request) {
+	help := strings.TrimSpace(`
+List of all available system endpoints;
+
+/_help   - Show this message
+/_routes - List all available routes
+/_reset  - Flush all existing routes and load new ones
+/_logs   - Print container logs (for specified host)
+/_env    - Print container environment variables (for specified host)
+
+To get logs or environment variable for a container:
+
+http://my-container.domain.com/_logs
+http://my-container.domain.com/_logs?lines=100
+http://my-container.domain.com/_env
+`)
+
+	fmt.Fprintf(w, help)
+}
+
 func (gw *Gateway) Start(bind string) error {
 	log.Printf("Starting gateway server on http://%s\n", bind)
 
+	http.HandleFunc("/_help", gw.RenderHelp)
 	http.HandleFunc("/_routes", gw.RenderDestinations)
 	http.HandleFunc("/_destinations", gw.RenderDestinations)
 	http.HandleFunc("/_logs", gw.RenderLogs)
