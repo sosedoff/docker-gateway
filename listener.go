@@ -21,17 +21,11 @@ func NewListener(client *docker.Client, gw *Gateway) *Listener {
 }
 
 func (l *Listener) Init() {
-	containers, err := l.client.ListContainers(docker.ListContainersOptions{})
+	l.gw.Flush()
+
+	err := l.gw.Load()
 	if err != nil {
 		log.Println(err)
-		return
-	}
-
-	for _, c := range containers {
-		container, err := l.client.InspectContainer(c.ID)
-		if err == nil {
-			l.gw.Add(container)
-		}
 	}
 }
 

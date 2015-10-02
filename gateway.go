@@ -64,6 +64,22 @@ func (gw *Gateway) notFound(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, strings.Join(msg, "\n"), http.StatusBadGateway)
 }
 
+func (gw *Gateway) Load() error {
+	containers, err := gw.Client.ListContainers(docker.ListContainersOptions{})
+	if err != nil {
+		return err
+	}
+
+	for _, c := range containers {
+		container, err := gw.Client.InspectContainer(c.ID)
+		if err == nil {
+			gw.Add(container)
+		}
+	}
+
+	return nil
+}
+
 func (gw *Gateway) Add(container *docker.Container) error {
 	log.Println("Adding container:", container.ID)
 
@@ -112,6 +128,15 @@ func (gw *Gateway) Remove(container *docker.Container) error {
 
 	delete(gw.Destinations[key], container.ID)
 	return nil
+}
+
+func (gw *Gateway) Flush() {
+	gw.Lock()
+	defer gw.Unlock()
+
+	for k := range gw.Destinations {
+		delete(gw.Destinations, k)
+	}
 }
 
 func (gw *Gateway) Find(reqHost string) *Destination {
@@ -215,6 +240,18 @@ func (gw *Gateway) RenderEnvironment(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "%s", env)
 }
 
+func (gw *Gateway) RenderReset(w http.ResponseWriter, r *http.Request) {
+	gw.Flush()
+
+	err := gw.Load()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/_routes", 301)
+}
+
 func (gw *Gateway) Start(bind string) error {
 	log.Printf("Starting gateway server on http://%s\n", bind)
 
@@ -222,7 +259,8 @@ func (gw *Gateway) Start(bind string) error {
 	http.HandleFunc("/_destinations", gw.RenderDestinations)
 	http.HandleFunc("/_logs", gw.RenderLogs)
 	http.HandleFunc("/_env", gw.RenderEnvironment)
-
+	http.HandleFunc("/_reset", gw.RenderReset)
 	http.HandleFunc("/", gw.Handle)
+
 	return http.ListenAndServe(bind, nil)
 }
