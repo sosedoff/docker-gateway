@@ -55,13 +55,14 @@ func (gw *Gateway) notFound(w http.ResponseWriter, r *http.Request) {
 		routes = append(routes, fmt.Sprintf("- http://%s", host))
 	}
 
-	msg := []string{
-		"Cant find any routes for this host!\n",
-		"Check available URLs:",
-		strings.Join(routes, "\n"),
+	msg := "Cant find any routes for this host!\n"
+
+	if len(gw.Destinations) > 0 {
+		msg += "\nCheck available URLs:\n"
+		msg += strings.Join(routes, "\n")
 	}
 
-	http.Error(w, strings.Join(msg, "\n"), http.StatusBadGateway)
+	http.Error(w, msg, http.StatusBadGateway)
 }
 
 func (gw *Gateway) Load() error {
