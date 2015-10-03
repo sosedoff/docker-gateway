@@ -63,10 +63,13 @@ func (l *Listener) handleEvent(event *docker.APIEvents) {
 		}
 	case "stop", "destroy", "kill", "die":
 		container, err := l.client.InspectContainer(event.ID)
+
 		if err == nil {
 			l.gw.Remove(container)
 		} else {
-			log.Println(err)
+			// Delete by ID in case if container was already deleted.
+			// This usually happens with `docker rm -f ID`
+			l.gw.RemoveByContainerId(event.ID)
 		}
 	}
 }

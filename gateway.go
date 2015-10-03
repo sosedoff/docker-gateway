@@ -130,6 +130,25 @@ func (gw *Gateway) Remove(container *docker.Container) error {
 	return nil
 }
 
+func (gw *Gateway) RemoveByContainerId(containerId string) {
+	gw.Lock()
+	defer gw.Unlock()
+
+	for host, dstMap := range gw.Destinations {
+		for id := range dstMap {
+			// Remove matching container from the route table
+			if id == containerId {
+				delete(dstMap, id)
+			}
+		}
+
+		// Remove host from the routing table if there are no destination
+		if len(dstMap) == 0 {
+			delete(gw.Destinations, host)
+		}
+	}
+}
+
 func (gw *Gateway) Flush() {
 	gw.Lock()
 	defer gw.Unlock()
