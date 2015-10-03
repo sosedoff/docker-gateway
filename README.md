@@ -72,3 +72,22 @@ http {
   }
 }
 ```
+
+### Using with Docker
+
+Pull image first:
+
+```
+docker pull sosedoff/docker-gateway
+```
+
+Start container (will start on port 80):
+
+```
+docker run -d \
+  -p 80:2377 \
+  --restart always \
+  -e GW_DOMAIN=mydomain.com \
+  -e DOCKER_HOST=tcp://172.17.42.1:2375 \
+  sosedoff/docker-gateway
+```
