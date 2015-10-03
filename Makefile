@@ -13,3 +13,6 @@ setup:
 
 clean:
 	rm -rf ./bin/*
+
+docker:
+	docker build -t sosedoff/docker-gateway .
