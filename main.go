@@ -7,6 +7,8 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 )
 
+const VERSION = "0.4.0"
+
 func getEnvVar(name, defval string) string {
 	val := os.Getenv(name)
 	if val == "" {
