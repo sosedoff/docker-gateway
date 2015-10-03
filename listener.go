@@ -30,8 +30,7 @@ func (l *Listener) Init() {
 }
 
 func (l *Listener) Start() error {
-	err := l.client.AddEventListener(l.chEvents)
-	if err != nil {
+	if err := l.client.AddEventListener(l.chEvents); err != nil {
 		return err
 	}
 
@@ -41,7 +40,7 @@ func (l *Listener) Start() error {
 			continue
 		}
 
-		l.handleEvent(event)
+		go l.handleEvent(event)
 	}
 
 	return nil
