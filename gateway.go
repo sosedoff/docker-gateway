@@ -188,6 +188,14 @@ func (gw *Gateway) Handle(w http.ResponseWriter, r *http.Request) {
 }
 
 func (gw *Gateway) RenderDestinations(w http.ResponseWriter, r *http.Request) {
+	result := []string{}
+	for host := range gw.Destinations {
+		result = append(result, host)
+	}
+	fmt.Fprintf(w, strings.Join(result, "\n"))
+}
+
+func (gw *Gateway) RenderDestinationsJson(w http.ResponseWriter, r *http.Request) {
 	result := map[string][]string{}
 
 	for k, dstMap := range gw.Destinations {
@@ -297,7 +305,7 @@ func (gw *Gateway) Start(bind string) error {
 
 	http.HandleFunc("/_help", gw.RenderHelp)
 	http.HandleFunc("/_routes", gw.RenderDestinations)
-	http.HandleFunc("/_destinations", gw.RenderDestinations)
+	http.HandleFunc("/_routes.json", gw.RenderDestinationsJson)
 	http.HandleFunc("/_logs", gw.RenderLogs)
 	http.HandleFunc("/_env", gw.RenderEnvironment)
 	http.HandleFunc("/_reset", gw.RenderReset)
