@@ -219,7 +219,12 @@ func (gw *Gateway) RenderLogs(w http.ResponseWriter, r *http.Request) {
 	// Determine how many lines of logs we need to fetch
 	lines := r.URL.Query().Get("lines")
 	if lines == "" {
-		lines = "3000"
+		lines = r.URL.Query().Get("limit")
+	}
+
+	// Fetch 100 lines of logs by default
+	if lines == "" {
+		lines = "1000"
 	}
 
 	container, err := gw.Client.InspectContainer(dest.containerId)
