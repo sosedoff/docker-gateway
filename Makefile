@@ -16,3 +16,6 @@ clean:
 
 docker:
 	docker build -t sosedoff/docker-gateway .
+
+docker-release: docker
+	docker push sosedoff/docker-gateway
