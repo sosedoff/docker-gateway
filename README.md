@@ -1,6 +1,6 @@
 # docker-gateway
 
-Stupid simple reverse proxy for Docker
+Revese proxy for Docker containers
 
 ## Overview
 
@@ -11,20 +11,23 @@ implemented in Go and does not require any dependencies.
 
 ## Install
 
-With Go:
+From source:
 
 ```
 go get github.com/sosedoff/docker-gateway
 ```
 
-## Development
+From github releases:
 
-There are few make tasks available:
+```
+https://github.com/sosedoff/docker-gateway/releases
+```
 
-- `make setup` - Install dependencies
-- `make build` - Build a binary for current environment
-- `make all`   - Build binaries for Linux and OSX (amd64 only)
-- `make clean` - Remove temp files
+From docker registry:
+
+```
+docker pull sosedoff/docker-gateway
+```
 
 ## Usage
 
@@ -55,18 +58,18 @@ Gateway will automatically map those container to: http://test(1,2,3).docker.dev
 
 ```
 http {
-  upstream docker_gateway_local {
+  upstream docker_gateway {
     server 127.0.0.1:2377;
   }
 
   server {
     listen 80;
-    server_name *.docker.dev;
+    server_name *.mydomain.dev;
 
     location / {
       proxy_set_header Host $http_host;
       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-      proxy_pass http://docker_gateway_local;
+      proxy_pass http://docker_gateway;
       proxy_redirect off;
     }
   }
@@ -91,3 +94,17 @@ docker run -d \
   -e DOCKER_HOST=tcp://172.17.42.1:2375 \
   sosedoff/docker-gateway
 ```
+
+## Development
+
+There are few make tasks available:
+
+- `make setup`  - Install dependencies
+- `make build`  - Build a binary for current environment
+- `make all`    - Build binaries for Linux and OSX (amd64 only)
+- `make clean`  - Remove temp files
+- `make docker` - Build docker image
+
+## License
+
+The MIT License (MIT)
