@@ -190,7 +190,7 @@ func (gw *Gateway) Handle(w http.ResponseWriter, r *http.Request) {
 func (gw *Gateway) RenderDestinations(w http.ResponseWriter, r *http.Request) {
 	result := []string{}
 	for host := range gw.Destinations {
-		result = append(result, host)
+		result = append(result, "http://"+host)
 	}
 	fmt.Fprintf(w, strings.Join(result, "\n"))
 }
