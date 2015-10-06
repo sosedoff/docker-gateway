@@ -15,7 +15,7 @@ clean:
 	rm -rf ./bin/*
 
 docker:
-	docker build -t sosedoff/docker-gateway .
+	docker build -no-cache=true -t sosedoff/docker-gateway .
 
 docker-release: docker
 	docker push sosedoff/docker-gateway
