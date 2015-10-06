@@ -285,6 +285,53 @@ func (gw *Gateway) RenderReset(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/_routes", 301)
 }
 
+func (gw *Gateway) RenderFile(w http.ResponseWriter, r *http.Request) {
+	dest := gw.Find(r.Host)
+	if dest == nil {
+		gw.notFound(w, r)
+		return
+	}
+
+	file := r.URL.Query().Get("file")
+
+	container, err := gw.Client.InspectContainer(dest.containerId)
+	if err != nil {
+		http.Error(w, "Unable to inspect container:"+dest.containerId, http.StatusBadRequest)
+		return
+	}
+
+	exec, err := gw.Client.CreateExec(docker.CreateExecOptions{
+		AttachStdin:  true,
+		AttachStdout: true,
+		AttachStderr: true,
+		Tty:          false,
+		Container:    container.ID,
+		Cmd:          []string{"cat", file},
+	})
+
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), 400)
+		return
+	}
+
+	var buff bytes.Buffer
+
+	log.Println("Starting exec...")
+	err = gw.Client.StartExec(exec.ID, docker.StartExecOptions{
+		OutputStream: &buff,
+		ErrorStream:  &buff,
+		RawTerminal:  false,
+	})
+
+	if err != nil {
+		http.Error(w, err.Error(), 400)
+		return
+	}
+
+	fmt.Fprintf(w, "%s", buff.String())
+}
+
 func (gw *Gateway) RenderHelp(w http.ResponseWriter, r *http.Request) {
 	help := strings.TrimSpace(`
 List of all available system endpoints;
@@ -312,6 +359,7 @@ func (gw *Gateway) Start(bind string) error {
 	http.HandleFunc("/_routes", gw.RenderDestinations)
 	http.HandleFunc("/_routes.json", gw.RenderDestinationsJson)
 	http.HandleFunc("/_logs", gw.RenderLogs)
+	http.HandleFunc("/_file", gw.RenderFile)
 	http.HandleFunc("/_env", gw.RenderEnvironment)
 	http.HandleFunc("/_reset", gw.RenderReset)
 	http.HandleFunc("/", gw.Handle)
