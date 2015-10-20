@@ -355,13 +355,16 @@ http://my-container.domain.com/_env
 func (gw *Gateway) Start(bind string) error {
 	log.Printf("Starting gateway server on http://%s\n", bind)
 
-	http.HandleFunc("/_help", gw.RenderHelp)
-	http.HandleFunc("/_routes", gw.RenderDestinations)
-	http.HandleFunc("/_routes.json", gw.RenderDestinationsJson)
-	http.HandleFunc("/_logs", gw.RenderLogs)
-	http.HandleFunc("/_file", gw.RenderFile)
-	http.HandleFunc("/_env", gw.RenderEnvironment)
-	http.HandleFunc("/_reset", gw.RenderReset)
+	if os.Getenv("DEBUG") == "0" {
+		http.HandleFunc("/_help", gw.RenderHelp)
+		http.HandleFunc("/_routes", gw.RenderDestinations)
+		http.HandleFunc("/_logs", gw.RenderLogs)
+		http.HandleFunc("/_file", gw.RenderFile)
+		http.HandleFunc("/_env", gw.RenderEnvironment)
+		http.HandleFunc("/_reset", gw.RenderReset)
+		http.HandleFunc("/_routes.json", gw.RenderDestinationsJson)
+	}
+
 	http.HandleFunc("/", gw.Handle)
 
 	return http.ListenAndServe(bind, nil)
