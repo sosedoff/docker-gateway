@@ -8,11 +8,14 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 
 	docker "github.com/fsouza/go-dockerclient"
 )
+
+var reBotAgent = regexp.MustCompile(`(?i)google|yahoo|bing`)
 
 type Gateway struct {
 	Client        *docker.Client
@@ -175,6 +178,15 @@ func (gw *Gateway) Find(reqHost string) *Destination {
 }
 
 func (gw *Gateway) Handle(w http.ResponseWriter, r *http.Request) {
+	if os.Getenv("BOUNCE_BOTS") != "" {
+		agent := r.Header.Get("User-Agent")
+
+		if reBotAgent.Match([]byte(agent)) {
+			gw.notFound(w, r)
+			return
+		}
+	}
+
 	destination := gw.Find(r.Host)
 
 	log.Printf("Request method=%s host=%s path=%s -> %s\n", r.Method, r.Host, r.RequestURI, destination)
@@ -352,8 +364,22 @@ http://my-container.domain.com/_env
 	fmt.Fprintf(w, help)
 }
 
+func (gw *Gateway) RenderRobots(w http.ResponseWriter, r *http.Request) {
+	robots := strings.TrimSpace(`
+User-agent: *
+Disallow: /
+`)
+
+	r.Header.Set("Content-Type", "text/plain")
+	fmt.Fprintf(w, robots)
+}
+
 func (gw *Gateway) Start(bind string) error {
 	log.Printf("Starting gateway server on http://%s\n", bind)
+
+	if os.Getenv("BOUNCE_BOTS") != "" {
+		http.HandleFunc("/robots.txt", gw.RenderRobots)
+	}
 
 	if os.Getenv("DEBUG") != "0" {
 		http.HandleFunc("/_help", gw.RenderHelp)
