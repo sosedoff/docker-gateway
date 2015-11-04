@@ -355,7 +355,7 @@ http://my-container.domain.com/_env
 func (gw *Gateway) Start(bind string) error {
 	log.Printf("Starting gateway server on http://%s\n", bind)
 
-	if os.Getenv("DEBUG") == "0" {
+	if os.Getenv("DEBUG") != "0" {
 		http.HandleFunc("/_help", gw.RenderHelp)
 		http.HandleFunc("/_routes", gw.RenderDestinations)
 		http.HandleFunc("/_logs", gw.RenderLogs)
