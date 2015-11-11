@@ -7,6 +7,8 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"regexp"
 	"strings"
@@ -20,15 +22,27 @@ var reBotAgent = regexp.MustCompile(`(?i)google|yahoo|bing`)
 type Gateway struct {
 	Client        *docker.Client
 	DefaultDomain string
+	DefaultRoute  *httputil.ReverseProxy
 	SkipNoDomain  bool
 	Destinations  map[string]DestinationMap
 	*sync.Mutex
 }
 
 func NewGateway(client *docker.Client) *Gateway {
+	var route *httputil.ReverseProxy
+
+	if os.Getenv("GW_DEFAULT_ROUTE") != "" {
+		routeUrl, err := url.Parse(os.Getenv("GW_DEFAULT_ROUTE"))
+		if err != nil {
+			log.Fatalln(err)
+		}
+		route = httputil.NewSingleHostReverseProxy(routeUrl)
+	}
+
 	return &Gateway{
 		Client:        client,
 		DefaultDomain: os.Getenv("GW_DOMAIN"),
+		DefaultRoute:  route,
 		SkipNoDomain:  os.Getenv("GW_SKIP_NO_DOMAIN") != "",
 		Destinations:  map[string]DestinationMap{},
 		Mutex:         &sync.Mutex{},
@@ -192,6 +206,11 @@ func (gw *Gateway) Handle(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Request method=%s host=%s path=%s -> %s\n", r.Method, r.Host, r.RequestURI, destination)
 
 	if destination == nil {
+		if gw.DefaultRoute != nil {
+			gw.DefaultRoute.ServeHTTP(w, r)
+			return
+		}
+
 		gw.notFound(w, r)
 		return
 	}
