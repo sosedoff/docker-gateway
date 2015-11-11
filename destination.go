@@ -31,9 +31,17 @@ func NewDestination(container *docker.Container) (*Destination, error) {
 	ip := container.NetworkSettings.IPAddress
 	port := getDefaultPort()
 
-	for k, _ := range container.Config.ExposedPorts {
-		port = k.Port()
-		break
+	if container.Node != nil {
+		for _, bindings := range container.NetworkSettings.Ports {
+			ip = bindings[0].HostIP
+			port = bindings[0].HostPort
+			break
+		}
+	} else {
+		for k, _ := range container.Config.ExposedPorts {
+			port = k.Port()
+			break
+		}
 	}
 
 	targetUrl, err := url.Parse(fmt.Sprintf("http://%v:%v", ip, port))
