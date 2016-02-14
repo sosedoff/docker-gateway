@@ -10,7 +10,7 @@ automatically. Gateway project is very similar to [nginx-proxy](https://github.c
 implemented in Go and does not require any dependencies.
 
 IMPORTANT: Please keep in mind that this project is only intended to be used for development
-purposes adn experiments with Docker containers.
+purposes and experiments with Docker containers.
 
 ## Install
 
