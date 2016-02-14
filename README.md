@@ -98,6 +98,15 @@ docker run -d \
   sosedoff/docker-gateway
 ```
 
+### Options
+
+List of all environment variables used by gateway:
+
+- `GW_DOMAIN` - Domain name to be used for all containers.
+- `GW_SKIP_NO_DOMAIN` - Skip containers that dont have `DOMAIN` variable set
+- `GW_DEFAULT_ROUTE` - Endpoint (in format `ip:port`) to which proxy any request that could not routed
+- `BOUNCE_BOTS` - Respond with 404 for any request many by robots
+
 ## Development
 
 There are few make tasks available:
