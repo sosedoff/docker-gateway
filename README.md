@@ -9,6 +9,9 @@ they expose any TCP ports. It will also listen for docker events and bring up / 
 automatically. Gateway project is very similar to [nginx-proxy](https://github.com/jwilder/nginx-proxy) but
 implemented in Go and does not require any dependencies.
 
+IMPORTANT: Please keep in mind that this project is only intended to be used for development
+purposes adn experiments with Docker containers.
+
 ## Install
 
 From source:
